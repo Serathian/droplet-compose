@@ -3,7 +3,7 @@
 #
 # Usage:
 #   1. SSH into droplet as root
-#   2. git clone https://github.com/jake-reddy/droplet-compose /root/droplet-compose
+#   2. git clone https://github.com/Serathian/droplet-compose /root/droplet-compose
 #   3. scp .env root@DROPLET_IP:/root/droplet-compose/.env
 #   4. bash /root/droplet-compose/startup.sh
 set -e
