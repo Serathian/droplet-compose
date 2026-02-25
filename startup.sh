@@ -11,7 +11,7 @@ systemctl enable docker
 systemctl start docker
 
 # 2. Clone the droplet-compose repo
-REPO_URL="${DROPLET_COMPOSE_REPO:-https://github.com/YOUR_GITHUB_USERNAME/droplet-compose.git}"
+REPO_URL="${DROPLET_COMPOSE_REPO:-https://${GITHUB_OWNER}:${GITHUB_TOKEN}@github.com/${GITHUB_OWNER}/droplet-compose.git}"
 git clone "$REPO_URL" /opt/droplet-compose
 
 # 3. Create the acme.json file for Traefik TLS certs (must be chmod 600)
