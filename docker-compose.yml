@@ -69,11 +69,12 @@ services:
       WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
       WORDPRESS_DB_USER: ${MYSQL_USER}
       WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WORDPRESS_TABLE_PREFIX: BWqrHcUV_
     volumes:
       - wordpress-data:/var/www/html
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wordpress.rule=Host(`reddyontheroad.com`)"
+      - "traefik.http.routers.wordpress.rule=Host(`reddyontheroad.com`) || Host(`ontheroad.jake-reddy.com`)"
       - "traefik.http.routers.wordpress.entrypoints=websecure"
       - "traefik.http.routers.wordpress.tls.certresolver=le"
       - "traefik.http.services.wordpress.loadbalancer.server.port=80"
