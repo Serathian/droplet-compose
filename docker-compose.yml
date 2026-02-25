@@ -1,0 +1,101 @@
+services:
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik-public"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.le.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.le.acme.storage=/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik/acme.json:/acme.json"
+    networks:
+      - traefik-public
+
+  jake-reddy:
+    image: ghcr.io/${GITHUB_OWNER}/jake-reddy.com-backend:latest
+    container_name: jake-reddy
+    restart: unless-stopped
+    env_file: .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jake-reddy.rule=Host(`jake-reddy.com`)"
+      - "traefik.http.routers.jake-reddy.entrypoints=websecure"
+      - "traefik.http.routers.jake-reddy.tls.certresolver=le"
+      - "traefik.http.services.jake-reddy.loadbalancer.server.port=3002"
+    networks:
+      - traefik-public
+
+  lastlightexplorer:
+    image: ghcr.io/${GITHUB_OWNER}/lastlightexplorer:latest
+    container_name: lastlightexplorer
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lastlightexplorer.rule=Host(`explorer.jake-reddy.com`)"
+      - "traefik.http.routers.lastlightexplorer.entrypoints=websecure"
+      - "traefik.http.routers.lastlightexplorer.tls.certresolver=le"
+      - "traefik.http.services.lastlightexplorer.loadbalancer.server.port=80"
+    networks:
+      - traefik-public
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - wordpress-data:/var/www/html
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wordpress.rule=Host(`reddyontheroad.com`)"
+      - "traefik.http.routers.wordpress.entrypoints=websecure"
+      - "traefik.http.routers.wordpress.tls.certresolver=le"
+      - "traefik.http.services.wordpress.loadbalancer.server.port=80"
+    networks:
+      - traefik-public
+      - wordpress-internal
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - wordpress-internal
+
+networks:
+  traefik-public:
+    external: false
+  wordpress-internal:
+    external: false
+    internal: true
+
+volumes:
+  wordpress-data:
+  mysql-data:
