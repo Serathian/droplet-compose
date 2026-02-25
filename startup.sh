@@ -14,7 +14,7 @@ REPO_DIR="/home/${DEPLOY_USER}/droplet-compose"
 # 1. Install Docker
 echo "Installing Docker..."
 apt-get update -y
-apt-get install -y docker.io docker-compose-plugin
+apt-get install -y docker.io docker-compose-v2
 systemctl enable docker
 systemctl start docker
 
