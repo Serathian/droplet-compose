@@ -26,9 +26,20 @@ if [ ! -f /opt/droplet-compose/.env ]; then
   exit 1
 fi
 
-# 5. Pull images and start the stack
+# 5. Authenticate Docker with GHCR so Watchtower can pull private images
+# Generate a GitHub Personal Access Token with read:packages scope and set it below,
+# or pass GITHUB_TOKEN and GITHUB_OWNER via DigitalOcean User Data.
+if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_OWNER" ]; then
+  echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_OWNER" --password-stdin
+else
+  echo "WARNING: GITHUB_TOKEN or GITHUB_OWNER not set. Watchtower cannot pull private images."
+  echo "Run: echo \$GITHUB_TOKEN | docker login ghcr.io -u \$GITHUB_OWNER --password-stdin"
+fi
+
+# 6. Pull images and start the stack
 cd /opt/droplet-compose
 docker compose pull
 docker compose up -d
 
 echo "Stack is up. Run 'docker compose ps' to verify."
+echo "Watchtower will auto-update containers every 5 minutes when new images are pushed to GHCR."

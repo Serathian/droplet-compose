@@ -1,0 +1,2 @@
+# This directory holds acme.json (Let's Encrypt certs) at runtime.
+# acme.json is gitignored. It is created by startup.sh with chmod 600.

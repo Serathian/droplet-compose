@@ -89,6 +89,18 @@ services:
     networks:
       - wordpress-internal
 
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json:ro
+    environment:
+      - DOCKER_CONFIG=/config.json
+      - WATCHTOWER_POLL_INTERVAL=300   # check for new images every 5 minutes
+      - WATCHTOWER_CLEANUP=true        # remove old images after update
+
 networks:
   traefik-public:
     external: false
