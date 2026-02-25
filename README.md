@@ -32,18 +32,21 @@ Docker Compose stack for the DigitalOcean droplet.
 ## Day-to-Day Commands
 
 ```bash
-make update           # pull latest images + restart changed containers
-make logs             # tail all logs
-make logs s=jake-reddy  # tail one service
-make ps               # show container status
-make restart s=wordpress  # restart one service
+docker compose pull && docker compose up -d   # pull latest images + restart changed containers
+docker compose logs -f                        # tail all logs
+docker compose logs -f jake-reddy            # tail one service
+docker compose ps                            # show container status
+docker compose restart wordpress             # restart one service
 ```
 
 ## Auto-Updates via Watchtower
 
 When GitHub Actions pushes a new image to GHCR (on push to `main`/`master`), Watchtower detects the new digest within 5 minutes and automatically restarts the affected container — no manual SSH required.
 
-Watchtower uses `/root/.docker/config.json` for GHCR auth. Run `make login` once after provisioning (or after token rotation).
+Watchtower uses `/root/.docker/config.json` for GHCR auth. Run the login command once after provisioning (or after token rotation):
+```bash
+echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_OWNER --password-stdin
+```
 
 ## Manual Update
 
