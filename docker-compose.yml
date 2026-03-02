@@ -59,45 +59,41 @@ services:
     networks:
       - traefik-public
 
-  wordpress:
-    image: wordpress:latest
-    container_name: wordpress
+  cms:
+    image: ghcr.io/${GITHUB_OWNER}/basecamp:latest
+    container_name: cms
     restart: unless-stopped
     env_file: .env
     environment:
-      WORDPRESS_DB_HOST: mysql
-      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
-      WORDPRESS_DB_USER: ${MYSQL_USER}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
-      WORDPRESS_TABLE_PREFIX: BWqrHcUV_
+      DATABASE_URI: postgresql://${CMS_DB_USER}:${CMS_DB_PASSWORD}@cms-db:5432/${CMS_DB_NAME}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      PAYLOAD_PUBLIC_SERVER_URL: https://cms.jake-reddy.com
     volumes:
-      - wordpress-data:/var/www/html
+      - cms-uploads:/app/media
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wordpress.rule=Host(`reddyontheroad.com`) || Host(`ontheroad.jake-reddy.com`)"
-      - "traefik.http.routers.wordpress.entrypoints=websecure"
-      - "traefik.http.routers.wordpress.tls.certresolver=le"
-      - "traefik.http.services.wordpress.loadbalancer.server.port=80"
+      - "traefik.http.routers.cms.rule=Host(`cms.jake-reddy.com`)"
+      - "traefik.http.routers.cms.entrypoints=websecure"
+      - "traefik.http.routers.cms.tls.certresolver=le"
+      - "traefik.http.services.cms.loadbalancer.server.port=3000"
     networks:
       - traefik-public
-      - wordpress-internal
+      - cms-internal
     depends_on:
-      - mysql
+      - cms-db
 
-  mysql:
-    image: mysql:8
-    container_name: mysql
+  cms-db:
+    image: postgis/postgis:16-3.4
+    container_name: cms-db
     restart: unless-stopped
-    env_file: .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      POSTGRES_DB: ${CMS_DB_NAME}
+      POSTGRES_USER: ${CMS_DB_USER}
+      POSTGRES_PASSWORD: ${CMS_DB_PASSWORD}
     volumes:
-      - mysql-data:/var/lib/mysql
+      - cms-db-data:/var/lib/postgresql/data
     networks:
-      - wordpress-internal
+      - cms-internal
 
   watchtower:
     image: containrrr/watchtower
@@ -114,10 +110,10 @@ services:
 networks:
   traefik-public:
     external: false
-  wordpress-internal:
+  cms-internal:
     external: false
     internal: true
 
 volumes:
-  wordpress-data:
-  mysql-data:
+  cms-db-data:
+  cms-uploads:
