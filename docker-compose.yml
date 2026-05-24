@@ -32,19 +32,19 @@ services:
     networks:
       - traefik-public
 
-  jake-reddy:
-    image: ghcr.io/${GITHUB_OWNER}/jake-reddy.com-backend:latest
-    container_name: jake-reddy
-    restart: unless-stopped
-    env_file: .env
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.jake-reddy.rule=Host(`jake-reddy.com`)"
-      - "traefik.http.routers.jake-reddy.entrypoints=websecure"
-      - "traefik.http.routers.jake-reddy.tls.certresolver=le"
-      - "traefik.http.services.jake-reddy.loadbalancer.server.port=3002"
-    networks:
-      - traefik-public
+#  jake-reddy:
+#    image: ghcr.io/${GITHUB_OWNER}/jake-reddy.com-backend:latest
+#    container_name: jake-reddy
+#    restart: unless-stopped
+#    env_file: .env
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.jake-reddy.rule=Host(`jake-reddy.com`)"
+#      - "traefik.http.routers.jake-reddy.entrypoints=websecure"
+#      - "traefik.http.routers.jake-reddy.tls.certresolver=le"
+#      - "traefik.http.services.jake-reddy.loadbalancer.server.port=3002"
+#    networks:
+#      - traefik-public
 
   lastlightexplorer:
     image: ghcr.io/${GITHUB_OWNER}/lastlightexplorer:latest
@@ -59,41 +59,54 @@ services:
     networks:
       - traefik-public
 
-  cms:
-    image: ghcr.io/${GITHUB_OWNER}/basecamp:latest
-    container_name: cms
+  30th-at-33:
+    image: ghcr.io/${GITHUB_OWNER}/30th-at-33:latest
+    container_name: 30th-at-33
     restart: unless-stopped
-    env_file: .env
-    environment:
-      DATABASE_URI: postgresql://${CMS_DB_USER}:${CMS_DB_PASSWORD}@cms-db:5432/${CMS_DB_NAME}
-      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-      PAYLOAD_PUBLIC_SERVER_URL: https://cms.jake-reddy.com
-    volumes:
-      - cms-uploads:/app/media
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.cms.rule=Host(`cms.jake-reddy.com`)"
-      - "traefik.http.routers.cms.entrypoints=websecure"
-      - "traefik.http.routers.cms.tls.certresolver=le"
-      - "traefik.http.services.cms.loadbalancer.server.port=3000"
+      - "traefik.http.routers.30th-at-33.rule=Host(`${ALPINE_30TH_DOMAIN}`)"
+      - "traefik.http.routers.30th-at-33.entrypoints=websecure"
+      - "traefik.http.routers.30th-at-33.tls.certresolver=le"
+      - "traefik.http.services.30th-at-33.loadbalancer.server.port=80"
     networks:
       - traefik-public
-      - cms-internal
-    depends_on:
-      - cms-db
 
-  cms-db:
-    image: postgis/postgis:16-3.4
-    container_name: cms-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${CMS_DB_NAME}
-      POSTGRES_USER: ${CMS_DB_USER}
-      POSTGRES_PASSWORD: ${CMS_DB_PASSWORD}
-    volumes:
-      - cms-db-data:/var/lib/postgresql/data
-    networks:
-      - cms-internal
+#  cms:
+#    image: ghcr.io/${GITHUB_OWNER}/basecamp:latest
+#    container_name: cms
+#    restart: unless-stopped
+#    env_file: .env
+#    environment:
+#      DATABASE_URI: postgresql://${CMS_DB_USER}:${CMS_DB_PASSWORD}@cms-db:5432/${CMS_DB_NAME}
+#      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+#      PAYLOAD_PUBLIC_SERVER_URL: https://cms.jake-reddy.com
+#    volumes:
+#      - cms-uploads:/app/media
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.cms.rule=Host(`cms.jake-reddy.com`)"
+#      - "traefik.http.routers.cms.entrypoints=websecure"
+#      - "traefik.http.routers.cms.tls.certresolver=le"
+#      - "traefik.http.services.cms.loadbalancer.server.port=3000"
+#    networks:
+#      - traefik-public
+#      - cms-internal
+#    depends_on:
+#      - cms-db
+#
+#  cms-db:
+#    image: postgis/postgis:16-3.4
+#    container_name: cms-db
+#    restart: unless-stopped
+#    environment:
+#      POSTGRES_DB: ${CMS_DB_NAME}
+#      POSTGRES_USER: ${CMS_DB_USER}
+#      POSTGRES_PASSWORD: ${CMS_DB_PASSWORD}
+#    volumes:
+#      - cms-db-data:/var/lib/postgresql/data
+#    networks:
+#      - cms-internal
 
   watchtower:
     image: containrrr/watchtower
@@ -110,10 +123,10 @@ services:
 networks:
   traefik-public:
     external: false
-  cms-internal:
-    external: false
-    internal: true
+#  cms-internal:
+#    external: false
+#    internal: true
 
-volumes:
-  cms-db-data:
-  cms-uploads:
+#volumes:
+#  cms-db-data:
+#  cms-uploads:
