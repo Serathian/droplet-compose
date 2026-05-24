@@ -65,7 +65,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.30th-at-33.rule=Host(`${ALPINE_30TH_DOMAIN}`)"
+      - "traefik.http.routers.30th-at-33.rule=Host(`30plus3.jake-reddy.com`)"
       - "traefik.http.routers.30th-at-33.entrypoints=websecure"
       - "traefik.http.routers.30th-at-33.tls.certresolver=le"
       - "traefik.http.services.30th-at-33.loadbalancer.server.port=80"
