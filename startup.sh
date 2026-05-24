@@ -11,12 +11,16 @@ set -e
 DEPLOY_USER="deploy"
 REPO_DIR="/home/${DEPLOY_USER}/droplet-compose"
 
-# 1. Install Docker
-echo "Installing Docker..."
-apt-get update -y
-apt-get install -y docker.io docker-compose-v2
-systemctl enable docker
-systemctl start docker
+# 1. Install Docker (only if not already installed)
+if ! command -v docker &> /dev/null; then
+  echo "Installing Docker..."
+  apt-get update -y
+  apt-get install -y docker.io docker-compose-v2
+  systemctl enable docker
+  systemctl start docker
+else
+  echo "Docker is already installed, skipping installation."
+fi
 
 # 2. Create deploy user and add to docker group
 if ! id "$DEPLOY_USER" &>/dev/null; then
