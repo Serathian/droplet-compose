@@ -32,19 +32,19 @@ services:
     networks:
       - traefik-public
 
-#  jake-reddy:
-#    image: ghcr.io/${GITHUB_OWNER}/jake-reddy.com-backend:latest
-#    container_name: jake-reddy
-#    restart: unless-stopped
-#    env_file: .env
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.jake-reddy.rule=Host(`jake-reddy.com`)"
-#      - "traefik.http.routers.jake-reddy.entrypoints=websecure"
-#      - "traefik.http.routers.jake-reddy.tls.certresolver=le"
-#      - "traefik.http.services.jake-reddy.loadbalancer.server.port=3002"
-#    networks:
-#      - traefik-public
+  jake-reddy:
+    image: ghcr.io/${GITHUB_OWNER}/jake-reddy.com-backend:latest
+    container_name: jake-reddy
+    restart: unless-stopped
+    env_file: .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jake-reddy.rule=Host(`jake-reddy.com`)"
+      - "traefik.http.routers.jake-reddy.entrypoints=websecure"
+      - "traefik.http.routers.jake-reddy.tls.certresolver=le"
+      - "traefik.http.services.jake-reddy.loadbalancer.server.port=3002"
+    networks:
+      - traefik-public
 
   lastlightexplorer:
     image: ghcr.io/${GITHUB_OWNER}/lastlightexplorer:latest
