@@ -127,9 +127,8 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /root/.docker/config.json:/config.json:ro
+      - /home/deploy/.docker/config.json:/config.json:ro
     environment:
-      - DOCKER_CONFIG=/config.json
       - WATCHTOWER_HTTP_API_UPDATE=true
       - WATCHTOWER_HTTP_API_TOKEN=${WATCHTOWER_TOKEN}
       - WATCHTOWER_POLL_INTERVAL=0      # Disable polling, use push webhooks instead

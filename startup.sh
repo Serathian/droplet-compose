@@ -43,23 +43,79 @@ chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "$DEPLOY_SSH"
 chmod 700 "$DEPLOY_SSH"
 chmod 600 "$DEPLOY_SSH/authorized_keys"
 
-# 5. Verify .env exists
+# 5. Generate .env file if it doesn't exist
 if [ ! -f "${REPO_DIR}/.env" ]; then
-  echo "ERROR: .env not found at ${REPO_DIR}/.env — copy it and re-run."
-  exit 1
+  echo "=== Environment Setup ==="
+  
+  echo "Enter your GitHub username:"
+  read -r GITHUB_OWNER
+  
+  echo "Enter your GitHub PAT (read:packages scope) for Watchtower:"
+  read -rs GITHUB_TOKEN
+  echo ""
+  
+  echo "Enter your Let's Encrypt Email (for SSL certs):"
+  read -r ACME_EMAIL
+  
+  echo "Enter a password for the Traefik dashboard (user: admin):"
+  read -rs TRAEFIK_PASSWORD
+  echo ""
+  
+  echo "Generating Traefik dashboard auth hash..."
+  # Generate bcrypt hash and escape the dollar signs for docker-compose
+  TRAEFIK_HASH=$(docker run --rm httpd:alpine htpasswd -bnBC 10 admin "${TRAEFIK_PASSWORD}" | sed -e 's/\$/\$\$/g')
+  
+  echo "Generating secure Watchtower token..."
+  WATCHTOWER_TOKEN=$(openssl rand -hex 32)
+  
+  cat <<EOF > "${REPO_DIR}/.env"
+# Your GitHub username (used to pull images from GHCR)
+GITHUB_OWNER=${GITHUB_OWNER}
+
+# Email for Let's Encrypt certificate registration
+ACME_EMAIL=${ACME_EMAIL}
+
+# Traefik dashboard basic auth
+TRAEFIK_DASHBOARD_AUTH=${TRAEFIK_HASH}
+
+# Secret token for triggering Watchtower webhooks
+WATCHTOWER_TOKEN=${WATCHTOWER_TOKEN}
+
+# ---------------------------------------------------
+# You can add your backend (jake-reddy.com) variables 
+# below manually later (SMTP_HOST, RECAPTCHA_SECRET, etc)
+# ---------------------------------------------------
+EOF
+  chown "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}/.env"
+  chmod 600 "${REPO_DIR}/.env"
+  echo "Created .env file securely."
+else
+  # If .env exists, we just need to make sure we still log into ghcr.io
+  # if they haven't already. But for simplicity, we'll prompt for token if missing.
+  echo ".env file already exists. Skipping generation."
+  source "${REPO_DIR}/.env"
+  
+  echo "Enter your GitHub PAT (read:packages scope) to login Watchtower (or press enter to skip if already logged in):"
+  read -rs GITHUB_TOKEN
+  echo ""
 fi
 
 # 6. Create acme.json for Traefik TLS certs (must be chmod 600)
+# Make sure the traefik directory exists first
+mkdir -p "${REPO_DIR}/traefik"
 touch "${REPO_DIR}/traefik/acme.json"
 chmod 600 "${REPO_DIR}/traefik/acme.json"
-chown "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}/traefik/acme.json"
+chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}/traefik"
 
 # 7. Authenticate with GHCR as deploy user so Watchtower can pull private images
-echo "Enter your GitHub PAT (read:packages scope):"
-read -s GITHUB_TOKEN
-echo "Enter your GitHub username:"
-read GITHUB_OWNER
-su - "$DEPLOY_USER" -c "echo '${GITHUB_TOKEN}' | docker login ghcr.io -u '${GITHUB_OWNER}' --password-stdin"
+# CRITICAL: Ensure config.json exists as a file BEFORE compose starts, even if we skip login, 
+# otherwise Docker will mistakenly create it as a directory!
+su - "$DEPLOY_USER" -c "mkdir -p ~/.docker && if [ ! -f ~/.docker/config.json ]; then echo '{}' > ~/.docker/config.json; fi"
+
+if [ -n "$GITHUB_TOKEN" ]; then
+  echo "Logging into ghcr.io..."
+  su - "$DEPLOY_USER" -c "echo '${GITHUB_TOKEN}' | docker login ghcr.io -u '${GITHUB_OWNER}' --password-stdin"
+fi
 
 # 8. Pull images and start the stack as deploy user
 echo "Starting stack..."
