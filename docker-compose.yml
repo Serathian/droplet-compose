@@ -108,6 +108,19 @@ services:
 #    networks:
 #      - cms-internal
 
+  houseforce:
+    image: ghcr.io/${GITHUB_OWNER}/houseforce:latest
+    container_name: houseforce
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.houseforce.rule=Host(`houseforce.jake-reddy.com`) || Host(`houseforce-blog.jake-reddy.com`)"
+      - "traefik.http.routers.houseforce.entrypoints=websecure"
+      - "traefik.http.routers.houseforce.tls.certresolver=le"
+      - "traefik.http.services.houseforce.loadbalancer.server.port=3000"
+    networks:
+      - traefik-public
+
   watchtower:
     image: containrrr/watchtower
     container_name: watchtower
