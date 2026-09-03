@@ -31,7 +31,9 @@ usermod -aG docker "$DEPLOY_USER"
 
 # 3. Move repo to deploy user's home and fix ownership
 if [ -d /root/droplet-compose ] && [ "/root/droplet-compose" != "$REPO_DIR" ]; then
-  mv /root/droplet-compose "$REPO_DIR"
+  mkdir -p "$REPO_DIR"
+  cp -a /root/droplet-compose/. "$REPO_DIR/"
+  rm -rf /root/droplet-compose
 fi
 chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "$REPO_DIR"
 
