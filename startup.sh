@@ -11,6 +11,23 @@ set -e
 DEPLOY_USER="deploy"
 REPO_DIR="/home/${DEPLOY_USER}/droplet-compose"
 
+# 0. Configure Swap Space (Prevents OOM crashes on RAM-constrained droplets)
+if [ "$(swapon --show | wc -l)" -le 1 ]; then
+  echo "Setting up 2GB swap space to prevent memory crashes..."
+  fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile 2>/dev/null || true
+  swapon /swapfile 2>/dev/null || true
+  if ! grep -q '/swapfile' /etc/fstab; then
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  fi
+  sysctl vm.swappiness=10
+  if ! grep -q 'vm.swappiness' /etc/sysctl.conf; then
+    echo 'vm.swappiness=10' >> /etc/sysctl.conf
+  fi
+  echo "Swap space configured successfully."
+fi
+
 # 1. Install Docker (only if not already installed)
 if ! command -v docker &> /dev/null; then
   echo "Installing Docker..."

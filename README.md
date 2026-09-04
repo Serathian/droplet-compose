@@ -33,6 +33,7 @@ The repository is stored at `/home/deploy/droplet-compose`.
    bash /root/droplet-compose/startup.sh
    ```
 4. **The script will automatically:**
+   - Configure 2GB swap space to prevent memory crashes on small droplets
    - Install Docker & Docker Compose
    - Create the `deploy` user and secure it with your SSH keys
    - Prompt you for your GitHub credentials and Traefik dashboard password

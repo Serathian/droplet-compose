@@ -37,6 +37,9 @@ services:
     container_name: jake-reddy
     restart: unless-stopped
     env_file: .env
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=256"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.jake-reddy.rule=Host(`jake-reddy.com`)"
@@ -78,6 +81,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=384"
       HOST: 0.0.0.0
       PORT: 1337
       APP_KEYS: ${HOUSEFORCE_STRAPI_APP_KEYS}
@@ -104,16 +109,23 @@ services:
       - traefik-public
       - houseforce-internal
     depends_on:
-      - houseforce-db
+      houseforce-db:
+        condition: service_healthy
 
   houseforce-db:
     image: postgres:16-alpine
     container_name: houseforce-db
     restart: unless-stopped
+    command: postgres -c shared_buffers=64MB -c work_mem=8MB -c max_connections=40 -c maintenance_work_mem=32MB
     environment:
       POSTGRES_DB: ${HOUSEFORCE_DB_NAME}
       POSTGRES_USER: ${HOUSEFORCE_DB_USER}
       POSTGRES_PASSWORD: ${HOUSEFORCE_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${HOUSEFORCE_DB_USER} -d ${HOUSEFORCE_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - houseforce-db-data:/var/lib/postgresql/data
     networks:
@@ -148,8 +160,8 @@ services:
 #    restart: unless-stopped
 #    environment:
 #      POSTGRES_DB: ${BASECAMP_DB_NAME}
-#      POSTGRES_USER: ${BASECAMP_DB_USER}
-#      POSTGRES_PASSWORD: ${BASECAMP_DB_PASSWORD}
+#      POSTGRES_USER: ${HOUSEFORCE_DB_USER}
+#      POSTGRES_PASSWORD: ${HOUSEFORCE_DB_PASSWORD}
 #    volumes:
 #      - basecamp-db-data:/var/lib/postgresql/data
 #    networks:
@@ -161,6 +173,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=256"
       NEXT_PUBLIC_STRAPI_URL: ${HOUSEFORCE_NEXT_PUBLIC_STRAPI_URL}
     labels:
       - "traefik.enable=true"
