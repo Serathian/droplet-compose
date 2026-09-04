@@ -122,7 +122,11 @@ services:
       POSTGRES_USER: ${HOUSEFORCE_DB_USER}
       POSTGRES_PASSWORD: ${HOUSEFORCE_DB_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${HOUSEFORCE_DB_USER} -d ${HOUSEFORCE_DB_NAME}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${HOUSEFORCE_DB_USER} -d ${HOUSEFORCE_DB_NAME}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -131,41 +135,41 @@ services:
     networks:
       - houseforce-internal
 
-#  basecamp-cms:
-#    image: ghcr.io/${GITHUB_OWNER}/basecamp:latest
-#    container_name: basecamp-cms
-#    restart: unless-stopped
-#    env_file: .env
-#    environment:
-#      DATABASE_URI: postgresql://${BASECAMP_DB_USER}:${BASECAMP_DB_PASSWORD}@basecamp-db:5432/${BASECAMP_DB_NAME}
-#      PAYLOAD_SECRET: ${BASECAMP_PAYLOAD_SECRET}
-#      PAYLOAD_PUBLIC_SERVER_URL: https://basecamp.jake-reddy.com
-#    volumes:
-#      - basecamp-uploads:/app/media
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.basecamp-cms.rule=Host(`basecamp.jake-reddy.com`)"
-#      - "traefik.http.routers.basecamp-cms.entrypoints=websecure"
-#      - "traefik.http.routers.basecamp-cms.tls.certresolver=le"
-#      - "traefik.http.services.basecamp-cms.loadbalancer.server.port=3000"
-#    networks:
-#      - traefik-public
-#      - basecamp-internal
-#    depends_on:
-#      - basecamp-db
-#
-#  basecamp-db:
-#    image: postgis/postgis:16-3.4
-#    container_name: basecamp-db
-#    restart: unless-stopped
-#    environment:
-#      POSTGRES_DB: ${BASECAMP_DB_NAME}
-#      POSTGRES_USER: ${HOUSEFORCE_DB_USER}
-#      POSTGRES_PASSWORD: ${HOUSEFORCE_DB_PASSWORD}
-#    volumes:
-#      - basecamp-db-data:/var/lib/postgresql/data
-#    networks:
-#      - basecamp-internal
+  #  basecamp-cms:
+  #    image: ghcr.io/${GITHUB_OWNER}/basecamp:latest
+  #    container_name: basecamp-cms
+  #    restart: unless-stopped
+  #    env_file: .env
+  #    environment:
+  #      DATABASE_URI: postgresql://${BASECAMP_DB_USER}:${BASECAMP_DB_PASSWORD}@basecamp-db:5432/${BASECAMP_DB_NAME}
+  #      PAYLOAD_SECRET: ${BASECAMP_PAYLOAD_SECRET}
+  #      PAYLOAD_PUBLIC_SERVER_URL: https://basecamp.jake-reddy.com
+  #    volumes:
+  #      - basecamp-uploads:/app/media
+  #    labels:
+  #      - "traefik.enable=true"
+  #      - "traefik.http.routers.basecamp-cms.rule=Host(`basecamp.jake-reddy.com`)"
+  #      - "traefik.http.routers.basecamp-cms.entrypoints=websecure"
+  #      - "traefik.http.routers.basecamp-cms.tls.certresolver=le"
+  #      - "traefik.http.services.basecamp-cms.loadbalancer.server.port=3000"
+  #    networks:
+  #      - traefik-public
+  #      - basecamp-internal
+  #    depends_on:
+  #      - basecamp-db
+  #
+  #  basecamp-db:
+  #    image: postgis/postgis:16-3.4
+  #    container_name: basecamp-db
+  #    restart: unless-stopped
+  #    environment:
+  #      POSTGRES_DB: ${BASECAMP_DB_NAME}
+  #      POSTGRES_USER: ${HOUSEFORCE_DB_USER}
+  #      POSTGRES_PASSWORD: ${HOUSEFORCE_DB_PASSWORD}
+  #    volumes:
+  #      - basecamp-db-data:/var/lib/postgresql/data
+  #    networks:
+  #      - basecamp-internal
 
   houseforce:
     image: ghcr.io/${GITHUB_OWNER}/houseforce:latest
@@ -178,7 +182,7 @@ services:
       NEXT_PUBLIC_STRAPI_URL: ${HOUSEFORCE_NEXT_PUBLIC_STRAPI_URL}
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.houseforce.rule=Host(`houseforce.jake-reddy.com`) || Host(`houseforce-blog.jake-reddy.com`)"
+      - "traefik.http.routers.houseforce.rule=Host(`houseforce.jake-reddy.com`)"
       - "traefik.http.routers.houseforce.entrypoints=websecure"
       - "traefik.http.routers.houseforce.tls.certresolver=le"
       - "traefik.http.services.houseforce.loadbalancer.server.port=3000"
@@ -195,8 +199,8 @@ services:
     environment:
       - WATCHTOWER_HTTP_API_UPDATE=true
       - WATCHTOWER_HTTP_API_TOKEN=${WATCHTOWER_TOKEN}
-      - WATCHTOWER_POLL_INTERVAL=0      # Disable polling, use push webhooks instead
-      - WATCHTOWER_CLEANUP=true         # remove old images after update
+      - WATCHTOWER_POLL_INTERVAL=0 # Disable polling, use push webhooks instead
+      - WATCHTOWER_CLEANUP=true # remove old images after update
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.watchtower.rule=Host(`deploy.jake-reddy.com`)"
