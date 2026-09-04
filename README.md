@@ -40,6 +40,8 @@ The repository is stored at `/home/deploy/droplet-compose`.
    - Generate your `.env` file automatically
    - Log into GitHub Container Registry as the `deploy` user
    - Launch the stack!
+   - Prune unused Docker images to save disk space
+   - Echo out the Watchtower token, Traefik dashboard URL, and database credentials
 
 5. You can now log out of `root` and **SSH back in as `deploy`**:
    ```bash
@@ -53,6 +55,7 @@ The repository is stored at `/home/deploy/droplet-compose`.
 
 ```bash
 docker compose pull && docker compose up -d   # pull latest images + restart changed containers
+docker image prune -af                        # prune all unused docker images
 docker compose logs -f                        # tail all logs
 docker compose logs -f jake-reddy             # tail one service
 docker compose ps                             # show container status

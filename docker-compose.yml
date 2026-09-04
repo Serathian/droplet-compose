@@ -96,7 +96,7 @@ services:
       - houseforce-cms-uploads:/opt/app/public/uploads
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.houseforce-cms.rule=Host(`cms.jake-reddy.com`)"
+      - "traefik.http.routers.houseforce-cms.rule=Host(`houseforce-cms.jake-reddy.com`)"
       - "traefik.http.routers.houseforce-cms.entrypoints=websecure"
       - "traefik.http.routers.houseforce-cms.tls.certresolver=le"
       - "traefik.http.services.houseforce-cms.loadbalancer.server.port=1337"

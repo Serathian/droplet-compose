@@ -102,7 +102,7 @@ WATCHTOWER_TOKEN=${WATCHTOWER_TOKEN}
 # ---------------------------------------------------
 # Houseforce (Strapi CMS + Next.js)
 # ---------------------------------------------------
-HOUSEFORCE_NEXT_PUBLIC_STRAPI_URL=https://cms.jake-reddy.com
+HOUSEFORCE_NEXT_PUBLIC_STRAPI_URL=https://houseforce-cms.jake-reddy.com
 HOUSEFORCE_STRAPI_APP_KEYS=${HOUSEFORCE_STRAPI_APP_KEYS}
 HOUSEFORCE_STRAPI_API_TOKEN_SALT=${HOUSEFORCE_STRAPI_API_TOKEN_SALT}
 HOUSEFORCE_STRAPI_ADMIN_JWT_SECRET=${HOUSEFORCE_STRAPI_ADMIN_JWT_SECRET}
@@ -156,11 +156,41 @@ if [ -n "$GITHUB_TOKEN" ]; then
   su - "$DEPLOY_USER" -c "echo '${GITHUB_TOKEN}' | docker login ghcr.io -u '${GITHUB_OWNER}' --password-stdin"
 fi
 
-# 8. Pull images and start the stack as deploy user
+# 8. Pull images, start the stack, and prune unused images as deploy user
 echo "Starting stack..."
 su - "$DEPLOY_USER" -c "cd ${REPO_DIR} && docker compose pull && docker compose up -d"
 
+echo "Pruning unused Docker images..."
+su - "$DEPLOY_USER" -c "docker image prune -af"
+
 echo ""
-echo "Done! Stack is up."
-echo "You can now SSH in as: ${DEPLOY_USER}@$(hostname -I | awk '{print $1}')"
+echo "========================================================"
+echo " Setup Complete & Stack Running!"
+echo "========================================================"
+echo "SSH Access:"
+echo "  ssh ${DEPLOY_USER}@$(hostname -I | awk '{print $1}')"
+echo ""
+echo "Watchtower Webhook Details:"
+echo "  URL:    https://deploy.jake-reddy.com/v1/update"
+echo "  Token:  ${WATCHTOWER_TOKEN}"
+echo "  Header: Authorization: Bearer ${WATCHTOWER_TOKEN}"
+echo ""
+echo "Traefik Dashboard:"
+echo "  URL:   https://dns.jake-reddy.com"
+echo "  User:  admin"
+echo ""
+echo "Houseforce Database Credentials:"
+echo "  Database: ${HOUSEFORCE_DB_NAME}"
+echo "  User:     ${HOUSEFORCE_DB_USER}"
+echo "  Password: ${HOUSEFORCE_DB_PASSWORD}"
+echo ""
+echo "Basecamp Database Credentials:"
+echo "  Database: ${BASECAMP_DB_NAME}"
+echo "  User:     ${BASECAMP_DB_USER}"
+echo "  Password: ${BASECAMP_DB_PASSWORD}"
+echo ""
+echo "All credentials and secrets are saved in:"
+echo "  ${REPO_DIR}/.env"
+echo "========================================================"
+echo ""
 echo "Run 'docker compose ps' to verify services."
