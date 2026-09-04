@@ -72,46 +72,96 @@ services:
     networks:
       - traefik-public
 
-#  cms:
+  houseforce-cms:
+    image: ghcr.io/${GITHUB_OWNER}/houseforce-cms:latest
+    container_name: houseforce-cms
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 1337
+      APP_KEYS: ${HOUSEFORCE_STRAPI_APP_KEYS}
+      API_TOKEN_SALT: ${HOUSEFORCE_STRAPI_API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${HOUSEFORCE_STRAPI_ADMIN_JWT_SECRET}
+      TRANSFER_TOKEN_SALT: ${HOUSEFORCE_STRAPI_TRANSFER_TOKEN_SALT}
+      JWT_SECRET: ${HOUSEFORCE_STRAPI_JWT_SECRET}
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: houseforce-db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${HOUSEFORCE_DB_NAME}
+      DATABASE_USERNAME: ${HOUSEFORCE_DB_USER}
+      DATABASE_PASSWORD: ${HOUSEFORCE_DB_PASSWORD}
+      DATABASE_SSL: "false"
+    volumes:
+      - houseforce-cms-uploads:/opt/app/public/uploads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.houseforce-cms.rule=Host(`cms.jake-reddy.com`)"
+      - "traefik.http.routers.houseforce-cms.entrypoints=websecure"
+      - "traefik.http.routers.houseforce-cms.tls.certresolver=le"
+      - "traefik.http.services.houseforce-cms.loadbalancer.server.port=1337"
+    networks:
+      - traefik-public
+      - houseforce-internal
+    depends_on:
+      - houseforce-db
+
+  houseforce-db:
+    image: postgres:16-alpine
+    container_name: houseforce-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${HOUSEFORCE_DB_NAME}
+      POSTGRES_USER: ${HOUSEFORCE_DB_USER}
+      POSTGRES_PASSWORD: ${HOUSEFORCE_DB_PASSWORD}
+    volumes:
+      - houseforce-db-data:/var/lib/postgresql/data
+    networks:
+      - houseforce-internal
+
+#  basecamp-cms:
 #    image: ghcr.io/${GITHUB_OWNER}/basecamp:latest
-#    container_name: cms
+#    container_name: basecamp-cms
 #    restart: unless-stopped
 #    env_file: .env
 #    environment:
-#      DATABASE_URI: postgresql://${CMS_DB_USER}:${CMS_DB_PASSWORD}@cms-db:5432/${CMS_DB_NAME}
-#      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-#      PAYLOAD_PUBLIC_SERVER_URL: https://cms.jake-reddy.com
+#      DATABASE_URI: postgresql://${BASECAMP_DB_USER}:${BASECAMP_DB_PASSWORD}@basecamp-db:5432/${BASECAMP_DB_NAME}
+#      PAYLOAD_SECRET: ${BASECAMP_PAYLOAD_SECRET}
+#      PAYLOAD_PUBLIC_SERVER_URL: https://basecamp.jake-reddy.com
 #    volumes:
-#      - cms-uploads:/app/media
+#      - basecamp-uploads:/app/media
 #    labels:
 #      - "traefik.enable=true"
-#      - "traefik.http.routers.cms.rule=Host(`cms.jake-reddy.com`)"
-#      - "traefik.http.routers.cms.entrypoints=websecure"
-#      - "traefik.http.routers.cms.tls.certresolver=le"
-#      - "traefik.http.services.cms.loadbalancer.server.port=3000"
+#      - "traefik.http.routers.basecamp-cms.rule=Host(`basecamp.jake-reddy.com`)"
+#      - "traefik.http.routers.basecamp-cms.entrypoints=websecure"
+#      - "traefik.http.routers.basecamp-cms.tls.certresolver=le"
+#      - "traefik.http.services.basecamp-cms.loadbalancer.server.port=3000"
 #    networks:
 #      - traefik-public
-#      - cms-internal
+#      - basecamp-internal
 #    depends_on:
-#      - cms-db
+#      - basecamp-db
 #
-#  cms-db:
+#  basecamp-db:
 #    image: postgis/postgis:16-3.4
-#    container_name: cms-db
+#    container_name: basecamp-db
 #    restart: unless-stopped
 #    environment:
-#      POSTGRES_DB: ${CMS_DB_NAME}
-#      POSTGRES_USER: ${CMS_DB_USER}
-#      POSTGRES_PASSWORD: ${CMS_DB_PASSWORD}
+#      POSTGRES_DB: ${BASECAMP_DB_NAME}
+#      POSTGRES_USER: ${BASECAMP_DB_USER}
+#      POSTGRES_PASSWORD: ${BASECAMP_DB_PASSWORD}
 #    volumes:
-#      - cms-db-data:/var/lib/postgresql/data
+#      - basecamp-db-data:/var/lib/postgresql/data
 #    networks:
-#      - cms-internal
+#      - basecamp-internal
 
   houseforce:
     image: ghcr.io/${GITHUB_OWNER}/houseforce:latest
     container_name: houseforce
     restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_STRAPI_URL: ${HOUSEFORCE_NEXT_PUBLIC_STRAPI_URL}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.houseforce.rule=Host(`houseforce.jake-reddy.com`) || Host(`houseforce-blog.jake-reddy.com`)"
@@ -145,10 +195,15 @@ services:
 networks:
   traefik-public:
     external: false
-#  cms-internal:
+  houseforce-internal:
+    external: false
+    internal: true
+#  basecamp-internal:
 #    external: false
 #    internal: true
 
-#volumes:
-#  cms-db-data:
-#  cms-uploads:
+volumes:
+  houseforce-db-data:
+  houseforce-cms-uploads:
+#  basecamp-db-data:
+#  basecamp-uploads:

@@ -70,6 +70,22 @@ if [ ! -f "${REPO_DIR}/.env" ]; then
   echo "Generating secure Watchtower token..."
   WATCHTOWER_TOKEN=$(openssl rand -hex 32)
   
+  echo "Generating Houseforce Strapi CMS secure keys and DB credentials..."
+  HOUSEFORCE_STRAPI_APP_KEYS="$(openssl rand -base64 16),$(openssl rand -base64 16)"
+  HOUSEFORCE_STRAPI_API_TOKEN_SALT=$(openssl rand -base64 16)
+  HOUSEFORCE_STRAPI_ADMIN_JWT_SECRET=$(openssl rand -base64 16)
+  HOUSEFORCE_STRAPI_TRANSFER_TOKEN_SALT=$(openssl rand -base64 16)
+  HOUSEFORCE_STRAPI_JWT_SECRET=$(openssl rand -base64 16)
+  HOUSEFORCE_DB_NAME="strapi_$(openssl rand -hex 4)"
+  HOUSEFORCE_DB_USER="strapi_$(openssl rand -hex 4)"
+  HOUSEFORCE_DB_PASSWORD=$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9')
+  
+  echo "Generating Basecamp Payload CMS secure keys and DB credentials..."
+  BASECAMP_PAYLOAD_SECRET=$(openssl rand -hex 32)
+  BASECAMP_DB_NAME="payload_$(openssl rand -hex 4)"
+  BASECAMP_DB_USER="user_$(openssl rand -hex 4)"
+  BASECAMP_DB_PASSWORD=$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9')
+  
   cat <<EOF > "${REPO_DIR}/.env"
 # Your GitHub username (used to pull images from GHCR)
 GITHUB_OWNER=${GITHUB_OWNER}
@@ -82,6 +98,27 @@ TRAEFIK_DASHBOARD_AUTH=${TRAEFIK_HASH}
 
 # Secret token for triggering Watchtower webhooks
 WATCHTOWER_TOKEN=${WATCHTOWER_TOKEN}
+
+# ---------------------------------------------------
+# Houseforce (Strapi CMS + Next.js)
+# ---------------------------------------------------
+HOUSEFORCE_NEXT_PUBLIC_STRAPI_URL=https://cms.jake-reddy.com
+HOUSEFORCE_STRAPI_APP_KEYS=${HOUSEFORCE_STRAPI_APP_KEYS}
+HOUSEFORCE_STRAPI_API_TOKEN_SALT=${HOUSEFORCE_STRAPI_API_TOKEN_SALT}
+HOUSEFORCE_STRAPI_ADMIN_JWT_SECRET=${HOUSEFORCE_STRAPI_ADMIN_JWT_SECRET}
+HOUSEFORCE_STRAPI_TRANSFER_TOKEN_SALT=${HOUSEFORCE_STRAPI_TRANSFER_TOKEN_SALT}
+HOUSEFORCE_STRAPI_JWT_SECRET=${HOUSEFORCE_STRAPI_JWT_SECRET}
+HOUSEFORCE_DB_NAME=${HOUSEFORCE_DB_NAME}
+HOUSEFORCE_DB_USER=${HOUSEFORCE_DB_USER}
+HOUSEFORCE_DB_PASSWORD=${HOUSEFORCE_DB_PASSWORD}
+
+# ---------------------------------------------------
+# Basecamp (Payload CMS + PostgreSQL)
+# ---------------------------------------------------
+BASECAMP_PAYLOAD_SECRET=${BASECAMP_PAYLOAD_SECRET}
+BASECAMP_DB_NAME=${BASECAMP_DB_NAME}
+BASECAMP_DB_USER=${BASECAMP_DB_USER}
+BASECAMP_DB_PASSWORD=${BASECAMP_DB_PASSWORD}
 
 # ---------------------------------------------------
 # You can add your backend (jake-reddy.com) variables 
