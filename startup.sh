@@ -50,15 +50,8 @@ touch "${REPO_DIR}/traefik/acme.json"
 chmod 600 "${REPO_DIR}/traefik/acme.json"
 chown "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}/traefik/acme.json"
 
-# 7. Authenticate with GHCR as deploy user so Watchtower can pull private images
-echo "Enter your GitHub PAT (read:packages scope):"
-read -s GITHUB_TOKEN
-echo "Enter your GitHub username:"
-read GITHUB_OWNER
-su - "$DEPLOY_USER" -c "echo '${GITHUB_TOKEN}' | docker login ghcr.io -u '${GITHUB_OWNER}' --password-stdin"
-
-# 8. Pull images and start the stack as deploy user
-echo "Starting stack..."
+# 7. Pull public images and start the stack as deploy user
+echo "Starting stack (pulling public GHCR images)..."
 su - "$DEPLOY_USER" -c "cd ${REPO_DIR} && docker compose pull && docker compose up -d"
 
 echo ""

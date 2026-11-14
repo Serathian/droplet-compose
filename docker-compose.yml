@@ -32,20 +32,6 @@ services:
     networks:
       - traefik-public
 
-  jake-reddy:
-    image: ghcr.io/${GITHUB_OWNER}/jake-reddy.com-backend:latest
-    container_name: jake-reddy
-    restart: unless-stopped
-    env_file: .env
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.jake-reddy.rule=Host(`jake-reddy.com`)"
-      - "traefik.http.routers.jake-reddy.entrypoints=websecure"
-      - "traefik.http.routers.jake-reddy.tls.certresolver=le"
-      - "traefik.http.services.jake-reddy.loadbalancer.server.port=3002"
-    networks:
-      - traefik-public
-
   lastlightexplorer:
     image: ghcr.io/${GITHUB_OWNER}/lastlightexplorer:latest
     container_name: lastlightexplorer
@@ -59,45 +45,89 @@ services:
     networks:
       - traefik-public
 
-  wordpress:
-    image: wordpress:latest
-    container_name: wordpress
+  # --- Headless CMS ---
+
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - cms-internal
+
+  basecamp:
+    image: ghcr.io/${GITHUB_OWNER}/basecamp-cms:latest
+    container_name: basecamp
     restart: unless-stopped
     env_file: .env
     environment:
-      WORDPRESS_DB_HOST: mysql
-      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
-      WORDPRESS_DB_USER: ${MYSQL_USER}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
-      WORDPRESS_TABLE_PREFIX: BWqrHcUV_
+      DATABASE_URI: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     volumes:
-      - wordpress-data:/var/www/html
+      - basecamp-media:/app/media
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wordpress.rule=Host(`reddyontheroad.com`) || Host(`ontheroad.jake-reddy.com`)"
-      - "traefik.http.routers.wordpress.entrypoints=websecure"
-      - "traefik.http.routers.wordpress.tls.certresolver=le"
-      - "traefik.http.services.wordpress.loadbalancer.server.port=80"
+      - "traefik.http.routers.basecamp.rule=Host(`basecamp.jake-reddy.com`)"
+      - "traefik.http.routers.basecamp.entrypoints=websecure"
+      - "traefik.http.routers.basecamp.tls.certresolver=le"
+      - "traefik.http.services.basecamp.loadbalancer.server.port=3000"
     networks:
       - traefik-public
-      - wordpress-internal
+      - cms-internal
     depends_on:
-      - mysql
+      - postgres
 
-  mysql:
-    image: mysql:8
-    container_name: mysql
+  # --- Websites ---
+
+  jake-reddy:
+    image: ghcr.io/${GITHUB_OWNER}/jake-reddy.com:latest
+    container_name: jake-reddy
+    restart: unless-stopped
+    env_file: .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jake-reddy.rule=Host(`jake-reddy.com`) || Host(`www.jake-reddy.com`)"
+      - "traefik.http.routers.jake-reddy.entrypoints=websecure"
+      - "traefik.http.routers.jake-reddy.tls.certresolver=le"
+      - "traefik.http.services.jake-reddy.loadbalancer.server.port=3000"
+    networks:
+      - traefik-public
+
+  nerdintheforest:
+    image: ghcr.io/${GITHUB_OWNER}/nerdintheforest.com:latest
+    container_name: nerdintheforest
     restart: unless-stopped
     env_file: .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    volumes:
-      - mysql-data:/var/lib/mysql
+      CMS_API_INTERNAL: http://basecamp:3000/api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nerdintheforest.rule=Host(`nerdintheforest.com`) || Host(`www.nerdintheforest.com`)"
+      - "traefik.http.routers.nerdintheforest.entrypoints=websecure"
+      - "traefik.http.routers.nerdintheforest.tls.certresolver=le"
+      - "traefik.http.services.nerdintheforest.loadbalancer.server.port=3000"
     networks:
-      - wordpress-internal
+      - traefik-public
+
+  reddyontheroad:
+    image: ghcr.io/${GITHUB_OWNER}/reddyontheroad.com:latest
+    container_name: reddyontheroad
+    restart: unless-stopped
+    env_file: .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.reddyontheroad.rule=Host(`reddyontheroad.com`) || Host(`www.reddyontheroad.com`)"
+      - "traefik.http.routers.reddyontheroad.entrypoints=websecure"
+      - "traefik.http.routers.reddyontheroad.tls.certresolver=le"
+      - "traefik.http.services.reddyontheroad.loadbalancer.server.port=3000"
+    networks:
+      - traefik-public
+
+  # --- Infrastructure ---
 
   watchtower:
     image: containrrr/watchtower
@@ -105,19 +135,28 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /root/.docker/config.json:/config.json:ro
     environment:
-      - DOCKER_CONFIG=/config.json
-      - WATCHTOWER_POLL_INTERVAL=300   # check for new images every 5 minutes
-      - WATCHTOWER_CLEANUP=true        # remove old images after update
+      - WATCHTOWER_HTTP_API_UPDATE=true
+      - WATCHTOWER_HTTP_API_TOKEN=${WATCHTOWER_TOKEN}
+      - WATCHTOWER_HTTP_API_PERIODIC_POLLS=true
+      - WATCHTOWER_POLL_INTERVAL=3600
+      - WATCHTOWER_CLEANUP=true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.watchtower.rule=Host(`watchtower.jake-reddy.com`)"
+      - "traefik.http.routers.watchtower.entrypoints=websecure"
+      - "traefik.http.routers.watchtower.tls.certresolver=le"
+      - "traefik.http.services.watchtower.loadbalancer.server.port=8080"
+    networks:
+      - traefik-public
 
 networks:
   traefik-public:
     external: false
-  wordpress-internal:
+  cms-internal:
     external: false
     internal: true
 
 volumes:
-  wordpress-data:
-  mysql-data:
+  postgres-data:
+  basecamp-media:
