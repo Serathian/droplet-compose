@@ -64,9 +64,13 @@ services:
     image: ghcr.io/${GITHUB_OWNER}/basecamp-cms:latest
     container_name: basecamp
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       DATABASE_URI: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
     volumes:
       - basecamp-media:/app/media
     labels:
@@ -87,13 +91,15 @@ services:
     image: ghcr.io/${GITHUB_OWNER}/jake-reddy.com:latest
     container_name: jake-reddy
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.jake-reddy.rule=Host(`jake-reddy.com`) || Host(`www.jake-reddy.com`)"
       - "traefik.http.routers.jake-reddy.entrypoints=websecure"
       - "traefik.http.routers.jake-reddy.tls.certresolver=le"
-      - "traefik.http.services.jake-reddy.loadbalancer.server.port=3000"
+      - "traefik.http.services.jake-reddy.loadbalancer.server.port=80"
     networks:
       - traefik-public
 
@@ -101,9 +107,12 @@ services:
     image: ghcr.io/${GITHUB_OWNER}/nerdintheforest.com:latest
     container_name: nerdintheforest
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
-      CMS_API_INTERNAL: http://basecamp:3000/api
+      CMS_API_INTERNAL: ${CMS_API_INTERNAL:-http://basecamp:3000/api}
+      NUXT_CMS_API_INTERNAL: ${CMS_API_INTERNAL:-http://basecamp:3000/api}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nerdintheforest.rule=Host(`nerdintheforest.com`) || Host(`www.nerdintheforest.com`)"
@@ -117,7 +126,12 @@ services:
     image: ghcr.io/${GITHUB_OWNER}/reddyontheroad.com:latest
     container_name: reddyontheroad
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CMS_API_INTERNAL: ${CMS_API_INTERNAL:-http://basecamp:3000/api}
+      NEXT_PUBLIC_CMS_URL: ${NEXT_PUBLIC_CMS_URL:-https://basecamp.jake-reddy.com}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.reddyontheroad.rule=Host(`reddyontheroad.com`) || Host(`www.reddyontheroad.com`)"

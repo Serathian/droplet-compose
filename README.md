@@ -11,17 +11,17 @@ Production Docker Compose orchestration for the multi-site website stack running
 | `traefik` | `traefik:v2.11` | 80, 443 | `dns.jake-reddy.com` | Edge router, TLS termination (Let's Encrypt), basic auth dashboard |
 | `basecamp` | `ghcr.io/${GITHUB_OWNER}/basecamp-cms:latest` | 3000 (internal) | `basecamp.jake-reddy.com` | Headless Payload CMS backend (auto-runs migrations on startup) |
 | `postgres` | `postgis/postgis:16-3.4-alpine` | 5432 (internal) | — | PostGIS spatial database for Payload CMS |
-| `jake-reddy` | `ghcr.io/${GITHUB_OWNER}/jake-reddy.com:latest` | 3000 / 80 | `jake-reddy.com`, `www.jake-reddy.com` | Personal portfolio & blog frontend (Astro / Nginx) |
+| `jake-reddy` | `ghcr.io/${GITHUB_OWNER}/jake-reddy.com:latest` | 80 (internal) | `jake-reddy.com`, `www.jake-reddy.com` | Personal portfolio & blog frontend (Astro / Nginx) |
 | `nerdintheforest` | `ghcr.io/${GITHUB_OWNER}/nerdintheforest.com:latest` | 3000 (internal) | `nerdintheforest.com`, `www.nerdintheforest.com` | Outdoor trail & GIS map app (Nuxt 3) |
 | `reddyontheroad` | `ghcr.io/${GITHUB_OWNER}/reddyontheroad.com:latest` | 3000 (internal) | `reddyontheroad.com`, `www.reddyontheroad.com` | Travel journal & overland scrapbook (Next.js - WIP landing page) |
 | `lastlightexplorer`| `ghcr.io/${GITHUB_OWNER}/lastlightexplorer:latest` | 80 (internal) | `explorer.jake-reddy.com` | Board game companion mini app (Vite / Nginx) |
-| `watchtower` | `containrrr/watchtower` | — | — | Automated continuous deployment; polls GHCR every 5m |
+| `watchtower` | `containrrr/watchtower` | 8080 (internal) | `watchtower.jake-reddy.com` | Automated continuous deployment via webhook + hourly GHCR poll (`WATCHTOWER_POLL_INTERVAL=3600`, every 1 hour) |
 
 ---
 
 ## Network Isolation
 
-* **`traefik-public`**: Public ingress network connecting Traefik to all customer-facing apps (`basecamp`, `jake-reddy`, `nerdintheforest`, `reddyontheroad`, `lastlightexplorer`).
+* **`traefik-public`**: Public ingress network connecting Traefik to all customer-facing apps (`basecamp`, `jake-reddy`, `nerdintheforest`, `reddyontheroad`, `lastlightexplorer`) and the `watchtower` webhook endpoint.
 * **`cms-internal`**: Private network strictly between `basecamp` and `postgres`. Database port 5432 is never exposed to the public internet.
 
 ---
@@ -40,9 +40,9 @@ Before launching the stack, point DNS `A` records to your droplet IP:
 
 ### 2. Setup on the Droplet
 
-1. Clone or copy `droplet-compose` to `/home/deploy/droplet-compose` (or `/root/droplet-compose`):
+1. Clone `droplet-compose` (`main`) to `/home/deploy/droplet-compose` (or `/root/droplet-compose` when bootstrapping with `startup.sh`):
    ```bash
-   git clone git@github.com:Serathian/droplet-compose.git /home/deploy/droplet-compose
+   git clone https://github.com/Serathian/droplet-compose.git /home/deploy/droplet-compose
    cd /home/deploy/droplet-compose
    ```
 2. Copy environment file and fill in values:

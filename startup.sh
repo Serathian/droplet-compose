@@ -10,6 +10,37 @@ set -e
 
 DEPLOY_USER="deploy"
 REPO_DIR="/home/${DEPLOY_USER}/droplet-compose"
+SOURCE_DIR="/root/droplet-compose"
+TARGET_BRANCH="main"
+
+# 0. Verify repository and active branch before modifying the droplet
+if [ -d "$SOURCE_DIR" ] && [ -d "$REPO_DIR" ] && [ "$SOURCE_DIR" != "$REPO_DIR" ]; then
+  echo "ERROR: Both ${SOURCE_DIR} and ${REPO_DIR} exist; remove or consolidate one before re-running."
+  exit 1
+fi
+
+ACTIVE_REPO="$REPO_DIR"
+if [ -d "$SOURCE_DIR" ] && [ "$SOURCE_DIR" != "$REPO_DIR" ]; then
+  ACTIVE_REPO="$SOURCE_DIR"
+fi
+
+if [ ! -d "$ACTIVE_REPO" ]; then
+  echo "ERROR: Repository not found at ${SOURCE_DIR} or ${REPO_DIR}."
+  echo "Clone it first: git clone -b ${TARGET_BRANCH} https://github.com/Serathian/droplet-compose ${SOURCE_DIR}"
+  exit 1
+fi
+
+if [ -d "${ACTIVE_REPO}/.git" ] && command -v git >/dev/null 2>&1; then
+  CURRENT_BRANCH="$(git -C "$ACTIVE_REPO" rev-parse --abbrev-ref HEAD)"
+  if [ "$CURRENT_BRANCH" != "$TARGET_BRANCH" ] && ! grep -q "basecamp:" "${ACTIVE_REPO}/docker-compose.yml" 2>/dev/null; then
+    echo "ERROR: Repository at ${ACTIVE_REPO} is on branch '${CURRENT_BRANCH}' (legacy compose stack)."
+    echo "Switch to '${TARGET_BRANCH}' first: git -C ${ACTIVE_REPO} fetch origin ${TARGET_BRANCH} && git -C ${ACTIVE_REPO} checkout ${TARGET_BRANCH}"
+    exit 1
+  fi
+  if [ "$CURRENT_BRANCH" != "$TARGET_BRANCH" ]; then
+    echo "WARNING: Repository at ${ACTIVE_REPO} is on branch '${CURRENT_BRANCH}' (expected '${TARGET_BRANCH}')."
+  fi
+fi
 
 # 1. Install Docker
 echo "Installing Docker..."
@@ -26,8 +57,8 @@ fi
 usermod -aG docker "$DEPLOY_USER"
 
 # 3. Move repo to deploy user's home and fix ownership
-if [ -d /root/droplet-compose ] && [ "/root/droplet-compose" != "$REPO_DIR" ]; then
-  mv /root/droplet-compose "$REPO_DIR"
+if [ -d "$SOURCE_DIR" ] && [ "$SOURCE_DIR" != "$REPO_DIR" ]; then
+  mv "$SOURCE_DIR" "$REPO_DIR"
 fi
 chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "$REPO_DIR"
 
@@ -45,7 +76,9 @@ if [ ! -f "${REPO_DIR}/.env" ]; then
   exit 1
 fi
 
-# 6. Create acme.json for Traefik TLS certs (must be chmod 600)
+# 6. Create traefik directory and acme.json for Traefik TLS certs (must be chmod 600)
+mkdir -p "${REPO_DIR}/traefik"
+chown "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}/traefik"
 touch "${REPO_DIR}/traefik/acme.json"
 chmod 600 "${REPO_DIR}/traefik/acme.json"
 chown "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}/traefik/acme.json"

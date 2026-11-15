@@ -14,7 +14,7 @@
 3. **Automated Migration Runner**:
    * `basecamp-cms` runs `payload migrate` automatically via `docker-entrypoint.sh` before the Node server starts. You do not need to manually run migrations on the server.
 4. **Network Segregation**:
-   * Only Traefik and public apps attach to `traefik-public`.
+   * Only Traefik, public apps, and the Watchtower webhook service attach to `traefik-public`.
    * Postgres and Payload CMS communicate exclusively over `cms-internal`.
    * Port 5432 is never exposed externally.
 
@@ -26,7 +26,7 @@
 | :--- | :--- | :--- | :--- |
 | `traefik` | 80, 443 | `dns.jake-reddy.com` (Dashboard) | Let's Encrypt (`le`) |
 | `basecamp` | 3000 | `basecamp.jake-reddy.com` | `le` |
-| `jake-reddy` | 3000 | `jake-reddy.com`, `www.jake-reddy.com` | `le` |
+| `jake-reddy` | 80 | `jake-reddy.com`, `www.jake-reddy.com` | `le` |
 | `nerdintheforest` | 3000 | `nerdintheforest.com`, `www.nerdintheforest.com` | `le` |
 | `reddyontheroad` | 3000 | `reddyontheroad.com`, `www.reddyontheroad.com` | `le` |
 | `lastlightexplorer` | 80 | `explorer.jake-reddy.com` | `le` |
@@ -37,7 +37,7 @@
 
 ## 3. Deployment Flow
 
-1. Developer pushes to `main`/`master` in any app repository.
+1. Developer pushes to `main` (or `v*.*.*` tag for `jake-reddy.com`) in any app repository.
 2. GitHub Actions runs CI, builds the Docker image, and pushes to `ghcr.io/Serathian/<app>:latest`.
 3. GitHub Actions triggers the Watchtower webhook:
    ```bash
@@ -45,4 +45,4 @@
    Header: Authorization: Bearer <WATCHTOWER_TOKEN>
    ```
 4. Watchtower immediately pulls the new public image from GHCR and gracefully restarts the container.
-5. If the webhook is not received, Watchtower falls back to hourly periodic polling (`WATCHTOWER_POLL_INTERVAL=3600`).
+5. If the webhook is not received, Watchtower falls back to hourly periodic polling (`WATCHTOWER_POLL_INTERVAL=3600`, every 1 hour).
