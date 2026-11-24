@@ -40,3 +40,20 @@ Every variable in `.env` is essential for production execution:
    * Migrations run automatically on `basecamp` container start.
    * Never execute `npx payload migrate:fresh` on the droplet — it drops all tables.
    * Always verify `docker compose logs basecamp` after a deployment to ensure migrations completed cleanly.
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked centrally in GitHub Issues (`Serathian/website-stack` via `gh --repo Serathian/website-stack`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses the default five-role triage label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout (`GLOSSARY.md` + `docs/adr/` at the repo root). See `docs/agents/domain.md`.
+
