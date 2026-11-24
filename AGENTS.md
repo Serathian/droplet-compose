@@ -8,7 +8,7 @@ Operational rules and system contracts for AI agents managing the DigitalOcean p
 
 Every variable in `.env` is essential for production execution:
 
-* `GITHUB_OWNER`: GitHub username (`Serathian`) for resolving `ghcr.io/${GITHUB_OWNER}/*`.
+* `GITHUB_OWNER`: Lowercase GitHub username/owner (`serathian`) for resolving `ghcr.io/${GITHUB_OWNER}/*`.
 * `ACME_EMAIL`: Administrator email for Let's Encrypt TLS notifications and cert registration.
 * `TRAEFIK_DASHBOARD_AUTH`: `admin:<hashed-password>` for Traefik dashboard basic auth at `dns.jake-reddy.com`.
 * `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`: Database credentials for the PostGIS container (used to compose `DATABASE_URL` and `DATABASE_URI` for `basecamp`).

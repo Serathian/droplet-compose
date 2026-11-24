@@ -46,7 +46,7 @@ jobs:
 
       - name: Render .env from GitHub secrets & vars
         env:
-          GITHUB_OWNER: ${{ vars.GITHUB_OWNER || 'Serathian' }}
+          GITHUB_OWNER: ${{ vars.GITHUB_OWNER || 'serathian' }}
           ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
           TRAEFIK_DASHBOARD_AUTH: ${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB || vars.POSTGRES_DB || 'payload' }}
@@ -110,7 +110,9 @@ jobs:
           with open('.env.rendered', 'w') as f:
               for k in keys:
                   v = os.environ.get(k, '').replace('\r', '').replace('\n', '')
-                  if k == 'TRAEFIK_DASHBOARD_AUTH':
+                  if k == 'GITHUB_OWNER':
+                      v = v.lower()
+                  elif k == 'TRAEFIK_DASHBOARD_AUTH':
                       v = re.sub(r'(?<!\$)\$(?!\$)', '$$', v)
                   f.write(f'{k}={v}\n')
           os.chmod('.env.rendered', 0o600)
