@@ -89,6 +89,7 @@ services:
       - basecamp-media:/app/media
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
       - "traefik.http.routers.basecamp.rule=Host(`basecamp.jake-reddy.com`)"
       - "traefik.http.routers.basecamp.entrypoints=websecure"
       - "traefik.http.routers.basecamp.tls.certresolver=le"
@@ -159,7 +160,7 @@ services:
   # --- Infrastructure ---
 
   watchtower:
-    image: containrrr/watchtower
+    image: nickfedor/watchtower
     container_name: watchtower
     restart: unless-stopped
     volumes:
@@ -210,6 +211,7 @@ services:
 
 networks:
   traefik-public:
+    name: traefik-public
     external: false
   cms-internal:
     external: false
