@@ -134,6 +134,67 @@ jobs:
           fi
           chmod 644 ~/.ssh/known_hosts
 
+      - name: Bootstrap fresh droplet via root if needed
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_USER: ${{ secrets.DROPLET_USER || vars.DROPLET_USER || 'deploy' }}
+          DROPLET_PORT: ${{ secrets.DROPLET_PORT || vars.DROPLET_PORT || '22' }}
+        run: |
+          set -e
+          SSH_OPTS="-i ~/.ssh/deploy_key -p ${DROPLET_PORT} -o BatchMode=yes -o StrictHostKeyChecking=yes"
+          if ssh $SSH_OPTS "${DROPLET_USER}@${DROPLET_HOST}" "command -v docker >/dev/null && docker compose version >/dev/null && docker buildx version >/dev/null" 2>/dev/null; then
+            echo "Target user ${DROPLET_USER} and Docker runtime already provisioned."
+            exit 0
+          fi
+
+          if ! ssh $SSH_OPTS "root@${DROPLET_HOST}" true 2>/dev/null; then
+            echo "::error::Cannot connect as '${DROPLET_USER}' (with Docker/Compose/Buildx) or fall back to 'root' on ${DROPLET_HOST}."
+            exit 1
+          fi
+
+          echo "Fresh droplet detected via root; installing Docker/Compose/Buildx and provisioning user '${DROPLET_USER}'..."
+          ssh $SSH_OPTS "root@${DROPLET_HOST}" "DROPLET_USER='$DROPLET_USER' bash -s" <<'BOOTSTRAP'
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+
+          if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y ca-certificates curl git
+          fi
+
+          if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1 || ! docker buildx version >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y ca-certificates curl
+            install -m 0755 -d /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+            chmod a+r /etc/apt/keyrings/docker.asc
+            . /etc/os-release
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${UBUNTU_CODENAME:-$VERSION_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+            apt-get update -y
+            apt-get remove -y docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc 2>/dev/null || true
+            apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            systemctl enable --now docker
+          fi
+
+          if ! id "$DROPLET_USER" >/dev/null 2>&1; then
+            useradd -m -s /bin/bash "$DROPLET_USER"
+          fi
+          usermod -aG docker "$DROPLET_USER"
+
+          USER_HOME="$(getent passwd "$DROPLET_USER" | cut -d: -f6)"
+          mkdir -p "${USER_HOME}/.ssh"
+          touch "${USER_HOME}/.ssh/authorized_keys"
+          if [ -f /root/.ssh/authorized_keys ]; then
+            while IFS= read -r key; do
+              [ -n "$key" ] || continue
+              grep -qxF "$key" "${USER_HOME}/.ssh/authorized_keys" || printf '%s\n' "$key" >> "${USER_HOME}/.ssh/authorized_keys"
+            done < /root/.ssh/authorized_keys
+          fi
+          chown -R "${DROPLET_USER}:${DROPLET_USER}" "${USER_HOME}/.ssh"
+          chmod 700 "${USER_HOME}/.ssh"
+          chmod 600 "${USER_HOME}/.ssh/authorized_keys"
+          BOOTSTRAP
+
       - name: Sync repo, upload .env, and deploy stack
         env:
           DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
@@ -174,10 +235,17 @@ jobs:
           cd "$DEPLOY_DIR"
           docker compose pull
           docker compose up -d --build
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            if docker compose logs --tail 30 basecamp 2>/dev/null | grep -q "Migrations complete"; then
+              break
+            fi
+            sleep 3
+          done
           if [ "$RUN_BACKUP" = "true" ]; then
             docker compose exec -T backup /usr/local/bin/backup.sh
           fi
           docker compose ps
+          docker compose logs --tail 20 basecamp
           REMOTE
 
       - name: Clean up runner credentials
