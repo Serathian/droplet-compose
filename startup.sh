@@ -83,9 +83,9 @@ touch "${REPO_DIR}/traefik/acme.json"
 chmod 600 "${REPO_DIR}/traefik/acme.json"
 chown "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}/traefik/acme.json"
 
-# 7. Pull public images and start the stack as deploy user
+# 7. Pull public images, build backup sidecar, and start the stack as deploy user
 echo "Starting stack (pulling public GHCR images)..."
-su - "$DEPLOY_USER" -c "cd ${REPO_DIR} && docker compose pull && docker compose up -d"
+su - "$DEPLOY_USER" -c "cd ${REPO_DIR} && docker compose pull && docker compose up -d --build"
 
 echo ""
 echo "Done! Stack is up."

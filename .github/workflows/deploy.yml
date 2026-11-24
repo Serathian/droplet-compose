@@ -1,0 +1,185 @@
+name: Initial / Manual Droplet Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_dir:
+        description: 'Target directory on droplet'
+        required: false
+        default: '/home/deploy/droplet-compose'
+      run_initial_backup:
+        description: 'Run an immediate test cold S3 backup after startup'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout droplet-compose
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+          ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
+          TRAEFIK_DASHBOARD_AUTH: ${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+          WATCHTOWER_TOKEN: ${{ secrets.WATCHTOWER_TOKEN }}
+        run: |
+          missing=""
+          for var in DROPLET_HOST DROPLET_SSH_KEY ACME_EMAIL TRAEFIK_DASHBOARD_AUTH POSTGRES_PASSWORD PAYLOAD_SECRET WATCHTOWER_TOKEN; do
+            eval "val=\${$var:-}"
+            if [ -z "$val" ]; then
+              missing="$missing $var"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required GitHub secrets:$missing"
+            exit 1
+          fi
+
+      - name: Render .env from GitHub secrets & vars
+        env:
+          GITHUB_OWNER: ${{ vars.GITHUB_OWNER || 'Serathian' }}
+          ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
+          TRAEFIK_DASHBOARD_AUTH: ${{ secrets.TRAEFIK_DASHBOARD_AUTH }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB || vars.POSTGRES_DB || 'payload' }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER || vars.POSTGRES_USER || 'payload' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+          WATCHTOWER_TOKEN: ${{ secrets.WATCHTOWER_TOKEN }}
+          CMS_API_INTERNAL: ${{ secrets.CMS_API_INTERNAL || vars.CMS_API_INTERNAL || 'http://basecamp:3000/api' }}
+          NEXT_PUBLIC_CMS_URL: ${{ secrets.NEXT_PUBLIC_CMS_URL || vars.NEXT_PUBLIC_CMS_URL || 'https://basecamp.jake-reddy.com' }}
+          PAYLOAD_PUBLIC_SERVER_URL: ${{ secrets.PAYLOAD_PUBLIC_SERVER_URL || vars.PAYLOAD_PUBLIC_SERVER_URL || 'https://basecamp.jake-reddy.com' }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET || vars.S3_BUCKET }}
+          S3_REGION: ${{ secrets.S3_REGION || vars.S3_REGION || 'auto' }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT || vars.S3_ENDPOINT }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          S3_PUBLIC_URL: ${{ secrets.S3_PUBLIC_URL || vars.S3_PUBLIC_URL }}
+          S3_FORCE_PATH_STYLE: ${{ secrets.S3_FORCE_PATH_STYLE || vars.S3_FORCE_PATH_STYLE || 'false' }}
+          S3_ACL: ${{ secrets.S3_ACL || vars.S3_ACL }}
+          BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET || vars.BACKUP_S3_BUCKET }}
+          BACKUP_S3_REGION: ${{ secrets.BACKUP_S3_REGION || vars.BACKUP_S3_REGION || 'us-east-1' }}
+          BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT || vars.BACKUP_S3_ENDPOINT }}
+          BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          BACKUP_S3_PREFIX: ${{ secrets.BACKUP_S3_PREFIX || vars.BACKUP_S3_PREFIX || 'basecamp-backups' }}
+          BACKUP_S3_STORAGE_CLASS: ${{ secrets.BACKUP_S3_STORAGE_CLASS || vars.BACKUP_S3_STORAGE_CLASS }}
+          BACKUP_SCHEDULE: ${{ secrets.BACKUP_SCHEDULE || vars.BACKUP_SCHEDULE || '0 3 * * *' }}
+          BACKUP_RETENTION_DAYS: ${{ secrets.BACKUP_RETENTION_DAYS || vars.BACKUP_RETENTION_DAYS || '30' }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          keys = [
+            'GITHUB_OWNER',
+            'ACME_EMAIL',
+            'TRAEFIK_DASHBOARD_AUTH',
+            'POSTGRES_DB',
+            'POSTGRES_USER',
+            'POSTGRES_PASSWORD',
+            'PAYLOAD_SECRET',
+            'WATCHTOWER_TOKEN',
+            'CMS_API_INTERNAL',
+            'NEXT_PUBLIC_CMS_URL',
+            'PAYLOAD_PUBLIC_SERVER_URL',
+            'S3_BUCKET',
+            'S3_REGION',
+            'S3_ENDPOINT',
+            'S3_ACCESS_KEY_ID',
+            'S3_SECRET_ACCESS_KEY',
+            'S3_PUBLIC_URL',
+            'S3_FORCE_PATH_STYLE',
+            'S3_ACL',
+            'BACKUP_S3_BUCKET',
+            'BACKUP_S3_REGION',
+            'BACKUP_S3_ENDPOINT',
+            'BACKUP_S3_ACCESS_KEY_ID',
+            'BACKUP_S3_SECRET_ACCESS_KEY',
+            'BACKUP_S3_PREFIX',
+            'BACKUP_S3_STORAGE_CLASS',
+            'BACKUP_SCHEDULE',
+            'BACKUP_RETENTION_DAYS',
+          ]
+          with open('.env.rendered', 'w') as f:
+              for k in keys:
+                  v = os.environ.get(k, '').replace('\r', '').replace('\n', '')
+                  if k == 'TRAEFIK_DASHBOARD_AUTH':
+                      v = re.sub(r'(?<!\$)\$(?!\$)', '$$', v)
+                  f.write(f'{k}={v}\n')
+          os.chmod('.env.rendered', 0o600)
+          PY
+
+      - name: Configure SSH
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_PORT: ${{ secrets.DROPLET_PORT || vars.DROPLET_PORT || '22' }}
+          DROPLET_SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+          DROPLET_KNOWN_HOSTS: ${{ secrets.DROPLET_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DROPLET_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$DROPLET_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$DROPLET_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$DROPLET_PORT" -H "$DROPLET_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Sync repo, upload .env, and deploy stack
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_USER: ${{ secrets.DROPLET_USER || vars.DROPLET_USER || 'deploy' }}
+          DROPLET_PORT: ${{ secrets.DROPLET_PORT || vars.DROPLET_PORT || '22' }}
+          DEPLOY_DIR: ${{ inputs.deploy_dir }}
+          REPO_URL: https://github.com/${{ github.repository }}.git
+          RUN_BACKUP: ${{ inputs.run_initial_backup }}
+        run: |
+          set -e
+          SSH_OPTS="-i ~/.ssh/deploy_key -p ${DROPLET_PORT} -o StrictHostKeyChecking=yes"
+          TARGET="${DROPLET_USER}@${DROPLET_HOST}"
+
+          ssh $SSH_OPTS "$TARGET" \
+            "DEPLOY_DIR='$DEPLOY_DIR' REPO_URL='$REPO_URL' sh -s" <<'REMOTE'
+          set -e
+          mkdir -p "$(dirname "$DEPLOY_DIR")"
+          if [ -d "$DEPLOY_DIR/.git" ]; then
+            git -C "$DEPLOY_DIR" fetch origin main
+            git -C "$DEPLOY_DIR" checkout main
+            git -C "$DEPLOY_DIR" reset --hard origin/main
+          else
+            git clone -b main "$REPO_URL" "$DEPLOY_DIR"
+          fi
+          mkdir -p "$DEPLOY_DIR/traefik"
+          touch "$DEPLOY_DIR/traefik/acme.json"
+          chmod 600 "$DEPLOY_DIR/traefik/acme.json"
+          REMOTE
+
+          scp -i ~/.ssh/deploy_key -P "$DROPLET_PORT" -o StrictHostKeyChecking=yes \
+            .env.rendered "${TARGET}:${DEPLOY_DIR}/.env.tmp"
+
+          ssh $SSH_OPTS "$TARGET" \
+            "DEPLOY_DIR='$DEPLOY_DIR' RUN_BACKUP='$RUN_BACKUP' sh -s" <<'REMOTE'
+          set -e
+          chmod 600 "$DEPLOY_DIR/.env.tmp"
+          mv "$DEPLOY_DIR/.env.tmp" "$DEPLOY_DIR/.env"
+          cd "$DEPLOY_DIR"
+          docker compose pull
+          docker compose up -d --build
+          if [ "$RUN_BACKUP" = "true" ]; then
+            docker compose exec -T backup /usr/local/bin/backup.sh
+          fi
+          docker compose ps
+          REMOTE
+
+      - name: Clean up runner credentials
+        if: always()
+        run: rm -f .env.rendered ~/.ssh/deploy_key

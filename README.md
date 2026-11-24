@@ -16,6 +16,7 @@ Production Docker Compose orchestration for the multi-site website stack running
 | `reddyontheroad` | `ghcr.io/${GITHUB_OWNER}/reddyontheroad.com:latest` | 3000 (internal) | `reddyontheroad.com`, `www.reddyontheroad.com` | Travel journal & overland scrapbook (Next.js - WIP landing page) |
 | `lastlightexplorer`| `ghcr.io/${GITHUB_OWNER}/lastlightexplorer:latest` | 80 (internal) | `explorer.jake-reddy.com` | Board game companion mini app (Vite / Nginx) |
 | `watchtower` | `containrrr/watchtower` | 8080 (internal) | `watchtower.jake-reddy.com` | Automated continuous deployment via webhook + hourly GHCR poll (`WATCHTOWER_POLL_INTERVAL=3600`, every 1 hour) |
+| `backup` | local `./backup` build (`postgres:16-alpine` + `aws-cli`) | — | — | Scheduled `pg_dump -Fc` + `traefik/acme.json` cold S3 backups & retention pruning |
 
 ---
 
@@ -59,8 +60,33 @@ Before launching the stack, point DNS `A` records to your droplet IP:
 4. Launch the stack (images are public on GHCR, no Docker login or PAT required):
    ```bash
    docker compose pull
-   docker compose up -d
+   docker compose up -d --build
    ```
+
+---
+
+## Manual Initial / Recovery Deploy via GitHub Actions
+
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) provides a manual (`workflow_dispatch`) deploy job that keeps `.env` durable in GitHub Secrets/Variables (`production` environment), syncs the repo to `main` on the droplet, renders `.env` (`chmod 600`), pulls images, builds `backup`, and starts the stack while leaving Watchtower active for ongoing image updates.
+
+* **Required Secrets**: `DROPLET_HOST`, `DROPLET_SSH_KEY`, `ACME_EMAIL`, `TRAEFIK_DASHBOARD_AUTH`, `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`, `WATCHTOWER_TOKEN`
+* **Optional Connection/Host Settings**: `DROPLET_USER` (default `deploy`), `DROPLET_PORT` (default `22`), `DROPLET_KNOWN_HOSTS`
+* **Hot S3 Media (`basecamp`)**: `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL`, `S3_FORCE_PATH_STYLE`, `S3_ACL`
+* **Cold S3 Backups (`backup`)**: `BACKUP_S3_BUCKET`, `BACKUP_S3_REGION`, `BACKUP_S3_ENDPOINT`, `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY`, `BACKUP_S3_PREFIX`, `BACKUP_S3_STORAGE_CLASS`, `BACKUP_SCHEDULE`, `BACKUP_RETENTION_DAYS` (`0` disables script pruning when using bucket lifecycle rules)
+
+---
+
+## Cold Database Backups & Restore
+
+The `backup` service runs `pg_dump -Fc` and archives `traefik/acme.json` on `BACKUP_SCHEDULE` (default `0 3 * * *`) whenever `BACKUP_S3_BUCKET` is configured.
+
+```bash
+# Run an immediate manual backup
+docker compose exec backup /usr/local/bin/backup.sh
+
+# Restore latest backup into a fresh PostGIS container
+docker compose exec backup /usr/local/bin/restore.sh latest
+```
 
 ---
 

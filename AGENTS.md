@@ -16,6 +16,8 @@ Every variable in `.env` is essential for production execution:
 * `WATCHTOWER_TOKEN`: Secret Bearer token authenticating webhook deploy triggers from GitHub Actions.
 * `CMS_API_INTERNAL`: Set to `http://basecamp:3000/api` for server-side fetches within the Docker network (also mapped to `NUXT_CMS_API_INTERNAL` for `nerdintheforest` Nuxt 3 runtime config).
 * `NEXT_PUBLIC_CMS_URL`: Set to `https://basecamp.jake-reddy.com` for public CMS references.
+* `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL`, `S3_FORCE_PATH_STYLE`, `S3_ACL`: Optional hot S3 + CDN storage for `basecamp` uploads (`nitf_media`, `jr_media`); if `S3_BUCKET` is unset, `basecamp` falls back to `/app/media`.
+* `BACKUP_S3_BUCKET`, `BACKUP_S3_REGION`, `BACKUP_S3_ENDPOINT`, `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY`, `BACKUP_S3_PREFIX`, `BACKUP_S3_STORAGE_CLASS`, `BACKUP_SCHEDULE`, `BACKUP_RETENTION_DAYS`: Optional cold S3 `pg_dump` + `traefik/acme.json` backup config for the `backup` service.
 
 ---
 
