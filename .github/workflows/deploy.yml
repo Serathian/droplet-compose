@@ -130,7 +130,11 @@ jobs:
           if [ -n "$DROPLET_KNOWN_HOSTS" ]; then
             printf '%s\n' "$DROPLET_KNOWN_HOSTS" > ~/.ssh/known_hosts
           else
-            ssh-keyscan -p "$DROPLET_PORT" -H "$DROPLET_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+            ssh-keyscan -T 10 -p "$DROPLET_PORT" -H "$DROPLET_HOST" > ~/.ssh/known_hosts
+            if [ ! -s ~/.ssh/known_hosts ]; then
+              echo "::error::ssh-keyscan could not retrieve host keys from ${DROPLET_HOST}:${DROPLET_PORT}."
+              exit 1
+            fi
           fi
           chmod 644 ~/.ssh/known_hosts
 
@@ -141,14 +145,14 @@ jobs:
           DROPLET_PORT: ${{ secrets.DROPLET_PORT || vars.DROPLET_PORT || '22' }}
         run: |
           set -e
-          SSH_OPTS="-i ~/.ssh/deploy_key -p ${DROPLET_PORT} -o BatchMode=yes -o StrictHostKeyChecking=yes"
-          if ssh $SSH_OPTS "${DROPLET_USER}@${DROPLET_HOST}" "command -v docker >/dev/null && docker compose version >/dev/null && docker buildx version >/dev/null" 2>/dev/null; then
+          SSH_OPTS="-i ~/.ssh/deploy_key -p ${DROPLET_PORT} -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes"
+          if ssh $SSH_OPTS "${DROPLET_USER}@${DROPLET_HOST}" "command -v docker >/dev/null && docker compose version >/dev/null && docker buildx version >/dev/null"; then
             echo "Target user ${DROPLET_USER} and Docker runtime already provisioned."
             exit 0
           fi
 
-          if ! ssh $SSH_OPTS "root@${DROPLET_HOST}" true 2>/dev/null; then
-            echo "::error::Cannot connect as '${DROPLET_USER}' (with Docker/Compose/Buildx) or fall back to 'root' on ${DROPLET_HOST}."
+          if ! ssh $SSH_OPTS "root@${DROPLET_HOST}" true; then
+            echo "::error::Cannot connect as '${DROPLET_USER}' (with Docker/Compose/Buildx) or fall back to 'root' on ${DROPLET_HOST}:${DROPLET_PORT}."
             exit 1
           fi
 
